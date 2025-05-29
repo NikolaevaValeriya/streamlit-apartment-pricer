@@ -1,17 +1,15 @@
 import streamlit as st
 import pandas as pd
 import joblib
-import numpy as np # Для pd.NA
+import numpy as np 
 
 st.set_page_config(
     page_title="Предсказание цен на квартиры",
     layout="wide",
     initial_sidebar_state="expanded"
-    # Убраны аргументы primaryColor, backgroundColor, theme и т.д.
-    # так как они теперь будут браться из config.toml
 )
 
-# --- 1. Загрузка обученного пайплайна/модели ---
+# --- 1. Загрузка обученного модели ---
 @st.cache_resource
 def load_model(model_path):
     try:
@@ -24,7 +22,7 @@ def load_model(model_path):
         st.error(f"Ошибка при загрузке модели: {e}")
         return None
 
-MODEL_PATH = 'my_apartment_xgb_model.joblib' # <--- УКАЖИТЕ ВАШ ПУТЬ К ФАЙЛУ
+MODEL_PATH = 'my_apartment_xgb_model.joblib' 
 model = load_model(MODEL_PATH)
 
 # --- 2. Заголовок и описание приложения ---
@@ -79,7 +77,6 @@ for key, value in all_medians.items():
 # Признаки, которые пользователь ВСЕГДА вводит напрямую
 user_selectable_features_direct_input = [
     'square', 'washing_machine', 'distance_to_center', 'repair_designer',
-    # 'kitchen_square' и 'number_of_rooms' обрабатываются с учетом 'is_studio'
     'conditioner', 'repair_euro', 'floors_in_house'
 ]
 
@@ -88,20 +85,19 @@ user_selectable_features_optional_input = [
     'cafes_count', 'culture_count'
 ]
 
-# Скрытые признаки (все остальные из all_expected_features)
-# Их значения по умолчанию будут медианами
+# Скрытые признаки (Их значения по умолчанию будут медианами)
 default_hidden_features_median = {
     k: v for k, v in all_medians.items()
     if k not in user_selectable_features_direct_input
     and k not in user_selectable_features_optional_input
-    and k not in ['kitchen_square', 'number_of_rooms'] # Эти два обрабатываются отдельно
+    and k not in ['kitchen_square', 'number_of_rooms'] 
 }
 
 
 if model:
     st.sidebar.header("Укажите характеристики квартиры:")
     binary_options_map = {"Да": 1, "Нет": 0}
-    user_inputs = {} # Собираем все пользовательские вводы сюда
+    user_inputs = {} 
 
     # --- Поля для признаков с прямым вводом (кроме kitchen_square и number_of_rooms) ---
     user_inputs['square'] = st.sidebar.number_input(
@@ -145,11 +141,11 @@ if model:
     user_inputs['repair_euro'] = binary_options_map[repair_euro_label]
     st.sidebar.markdown("---")
 
-    # --- Логика для "Студии", number_of_rooms и kitchen_square ---
+    # --- Логика для "Студии" ---
     is_studio = st.sidebar.checkbox(
         "Это студия?",
         key='is_studio_cb',
-        value=False, # По умолчанию не студия
+        value=False, 
         help="Если отмечено, количество комнат будет 1, а площадь кухни для модели будет 0."
     )
 
@@ -171,17 +167,17 @@ if model:
         )
     st.sidebar.markdown("---")
 
-    # --- Поля с опциональным вводом (чекбокс + ввод) для cafes_count и culture_count ---
+    # --- Поля с опциональным вводом для cafes_count и culture_count ---
     for feature_key in user_selectable_features_optional_input:
         median_value = all_medians[feature_key]
         feature_display_name = feature_key.replace('_', ' ').capitalize()
 
         if feature_key == 'cafes_count':
             label_text = "Кол-во кафе/ресторанов в радиусе 1 км"
-            max_val = 300 # Примерное максимальное значение
+            max_val = 300 
         elif feature_key == 'culture_count':
             label_text = "Кол-во объектов культуры в радиусе 1 км"
-            max_val = 200 # Примерное максимальное значение
+            max_val = 200 
         else:
             label_text = feature_display_name
             max_val = 200
@@ -189,7 +185,7 @@ if model:
         use_custom_value = st.sidebar.checkbox(
             f"Указать свое значение для '{label_text}' (медиана: {median_value})",
             key=f'use_custom_{feature_key}_cb',
-            value=False # По умолчанию используем медиану
+            value=False 
         )
         if use_custom_value:
             user_inputs[feature_key] = st.sidebar.number_input(
@@ -198,7 +194,7 @@ if model:
                 key=f'{feature_key}_input_custom'
             )
         else:
-            user_inputs[feature_key] = int(median_value) # Используем медиану напрямую
+            user_inputs[feature_key] = int(median_value) 
         st.sidebar.markdown("---")
 
 
@@ -206,7 +202,7 @@ if model:
     if st.sidebar.button("✨ Предсказать стоимость ✨"):
         # --- 5. Подготовка ПОЛНОГО набора данных для модели ---
         final_input_data = default_hidden_features_median.copy()
-        final_input_data.update(user_inputs) # Добавляем все собранные пользовательские вводы
+        final_input_data.update(user_inputs) 
 
         input_df_ordered_values = [final_input_data.get(name, pd.NA) for name in all_expected_features]
         input_df = pd.DataFrame([input_df_ordered_values], columns=all_expected_features)
